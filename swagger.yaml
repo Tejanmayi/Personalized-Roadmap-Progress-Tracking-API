@@ -1,0 +1,747 @@
+openapi: 3.0.0
+info:
+  title: Personalized Roadmap Progress Tracking API
+  version: 1.0.0
+  description: |
+    API for tracking personalized roadmap progress with milestones and tasks.
+    
+    ## Authentication
+    To use the API:
+    1. Register a new user using the `/api/auth/register` endpoint
+    2. Login using the `/api/auth/login` endpoint
+    3. Copy the JWT token from the response
+    4. Click the "Authorize" button at the top of the page
+    5. Enter the token in the format: `Bearer your_token_here`
+    6. Click "Authorize"
+    
+    All protected endpoints will now use your JWT token.
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Enter your JWT token in the format: Bearer <token>
+        
+        You can get a token by:
+        1. Registering a new user at /api/auth/register
+        2. Logging in at /api/auth/login
+        3. Copying the token from the response
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "60d21b4667d0d8992e610c85"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          example: "John Doe"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token for authentication
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        user:
+          $ref: '#/components/schemas/User'
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Invalid credentials"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "email"
+              message:
+                type: string
+                example: "Invalid email format"
+
+    Module:
+      type: object
+      properties:
+        moduleId:
+          type: string
+          example: "1.1"
+        title:
+          type: string
+          example: "Programming Fundamentals"
+        description:
+          type: string
+          example: "Basic programming concepts"
+        completionStatus:
+          type: boolean
+          example: false
+        timeSpent:
+          type: number
+          example: 120
+        userNotes:
+          type: string
+          example: "Completed basic concepts"
+        lastAccessed:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        completedAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        attempts:
+          type: number
+          example: 3
+        averageTimePerAttempt:
+          type: number
+          example: 40
+
+    Level:
+      type: object
+      properties:
+        levelId:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 1
+        title:
+          type: string
+          example: "Basic Foundation"
+        description:
+          type: string
+          example: "Fundamental concepts"
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Module'
+        progress:
+          type: number
+          example: 75.5
+        completedAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        totalTimeSpent:
+          type: number
+          example: 360
+        averageModuleTime:
+          type: number
+          example: 120
+
+    Roadmap:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "60d21b4667d0d8992e610c85"
+        title:
+          type: string
+          example: "Learning Path"
+        description:
+          type: string
+          example: "Personalized learning roadmap"
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Level'
+        currentLevel:
+          type: integer
+          example: 1
+        currentModule:
+          type: string
+          example: "1.1"
+        overallProgress:
+          type: number
+          example: 45.5
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Achievement'
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        lastActivity:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+        totalTimeSpent:
+          type: number
+          example: 720
+        averageLevelTime:
+          type: number
+          example: 240
+        completionRate:
+          type: number
+          example: 45.5
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          example: "beginner"
+
+    Achievement:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "level_1_complete"
+        title:
+          type: string
+          example: "Level 1 Master"
+        description:
+          type: string
+          example: "Completed all modules in Level 1"
+        unlockedAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00Z"
+
+paths:
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - name
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: "password123"
+                name:
+                  type: string
+                  example: "John Doe"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      summary: Login user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/me:
+    get:
+      summary: Get current user
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/roadmaps:
+    get:
+      summary: Get all roadmaps
+      tags:
+        - Roadmaps
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of roadmaps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Roadmap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a new roadmap
+      tags:
+        - Roadmaps
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Roadmap'
+      responses:
+        '201':
+          description: Roadmap created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Roadmap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/roadmaps/{id}:
+    get:
+      summary: Get a specific roadmap
+      tags:
+        - Roadmaps
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Roadmap details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Roadmap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Roadmap not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Update a roadmap
+      tags:
+        - Roadmaps
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Roadmap'
+      responses:
+        '200':
+          description: Roadmap updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Roadmap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Roadmap not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a roadmap
+      tags:
+        - Roadmaps
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Roadmap deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Roadmap deleted successfully"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Roadmap not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/progress/{roadmapId}/levels/{levelId}/modules/{moduleId}:
+    patch:
+      summary: Update module progress
+      tags:
+        - Progress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roadmapId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: levelId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: moduleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - completionStatus
+                - timeSpent
+              properties:
+                completionStatus:
+                  type: boolean
+                  example: true
+                timeSpent:
+                  type: number
+                  example: 120
+                userNotes:
+                  type: string
+                  example: "Completed basic concepts"
+      responses:
+        '200':
+          description: Module progress updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  module:
+                    $ref: '#/components/schemas/Module'
+                  progress:
+                    type: object
+                    properties:
+                      levelProgress:
+                        type: number
+                      overallProgress:
+                        type: number
+                  nextModule:
+                    type: object
+                    properties:
+                      levelId:
+                        type: integer
+                      moduleId:
+                        type: string
+                      title:
+                        type: string
+                  achievements:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Achievement'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Roadmap, level, or module not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/progress/{roadmapId}/stats:
+    get:
+      summary: Get progress statistics
+      tags:
+        - Progress
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roadmapId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Progress statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overallProgress:
+                    type: number
+                  currentLevel:
+                    type: integer
+                  currentModule:
+                    type: string
+                  levels:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        levelId:
+                          type: integer
+                        title:
+                          type: string
+                        progress:
+                          type: number
+                        completedModules:
+                          type: integer
+                        totalModules:
+                          type: integer
+                  achievements:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Achievement'
+                  nextModule:
+                    type: object
+                    properties:
+                      levelId:
+                        type: integer
+                      moduleId:
+                        type: string
+                      title:
+                        type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Roadmap not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/progress/analytics:
+    get:
+      summary: Get user analytics
+      tags:
+        - Progress
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalRoadmaps:
+                    type: integer
+                  averageProgress:
+                    type: number
+                  totalTimeSpent:
+                    type: number
+                  averageLevelTime:
+                    type: number
+                  completionRate:
+                    type: number
+                  recentActivity:
+                    type: string
+                    format: date-time
+                  difficultyDistribution:
+                    type: object
+                    properties:
+                      beginner:
+                        type: integer
+                      intermediate:
+                        type: integer
+                      advanced:
+                        type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error' 
