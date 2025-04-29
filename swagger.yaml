@@ -3,7 +3,7 @@ info:
   title: Personalized Roadmap Progress Tracking API
   version: 1.0.0
   description: |
-    API for tracking personalized roadmap progress with milestones and tasks.
+    API for tracking personalized roadmap progress with milestones, tasks, and learning resources.
     
     ## Authentication
     To use the API:
@@ -48,10 +48,110 @@ components:
         name:
           type: string
           example: "John Doe"
+        isAdmin:
+          type: boolean
+          example: false
         createdAt:
           type: string
           format: date-time
           example: "2024-01-01T00:00:00Z"
+
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "60d21b4667d0d8992e610c85"
+        title:
+          type: string
+          example: "Introduction to Programming"
+        description:
+          type: string
+          example: "Learn the basics of programming"
+        type:
+          type: string
+          enum: [video, text, hands-on, audio, interactive]
+          example: "video"
+        url:
+          type: string
+          example: "https://example.com/video"
+        difficulty:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 3
+        duration:
+          type: integer
+          minimum: 0
+          example: 30
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["programming", "basics"]
+        metadata:
+          type: object
+          properties:
+            author:
+              type: string
+              example: "60d21b4667d0d8992e610c85"
+        usage:
+          type: object
+          properties:
+            totalViews:
+              type: integer
+              example: 0
+            averageRating:
+              type: number
+              minimum: 1
+              maximum: 5
+              example: 4.5
+            completionRate:
+              type: number
+              example: 75.5
+            averageTimeSpent:
+              type: number
+              example: 25
+        analytics:
+          type: object
+          properties:
+            userFeedback:
+              type: array
+              items:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                  rating:
+                    type: number
+                  comment:
+                    type: string
+            effectiveness:
+              type: number
+              example: 85.5
+            difficultyRating:
+              type: number
+              minimum: 1
+              maximum: 5
+              example: 3.5
+            mostCommonUseCases:
+              type: array
+              items:
+                type: string
+            relatedResources:
+              type: array
+              items:
+                type: string
+        status:
+          type: string
+          enum: [active, archived, draft]
+          example: "active"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     AuthResponse:
       type: object
@@ -251,20 +351,14 @@ paths:
                   type: string
                   example: "John Doe"
       responses:
-        '201':
+        201:
           description: User registered successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
-        '400':
+        400:
           description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
           content:
             application/json:
               schema:
@@ -294,20 +388,14 @@ paths:
                   format: password
                   example: "password123"
       responses:
-        '200':
+        200:
           description: Login successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
-        '401':
+        401:
           description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
           content:
             application/json:
               schema:
@@ -321,23 +409,237 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
-          description: Current user information
+        200:
+          description: Current user details
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  user:
-                    $ref: '#/components/schemas/User'
-        '401':
+                $ref: '#/components/schemas/User'
+        401:
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
+
+  /api/resources:
+    get:
+      summary: Get all resources
+      tags:
+        - Resources
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [video, text, hands-on, audio, interactive]
+        - in: query
+          name: difficulty
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+        - in: query
+          name: tags
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            default: usage.totalViews
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        200:
+          description: List of resources
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Resource'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      pages:
+                        type: integer
+
+    post:
+      summary: Create a new resource
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Resource'
+      responses:
+        201:
+          description: Resource created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        400:
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/resources/{id}:
+    get:
+      summary: Get a specific resource
+      tags:
+        - Resources
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Resource details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      summary: Update a resource
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Resource'
+      responses:
+        200:
+          description: Resource updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        404:
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete a resource
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Resource deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Resource deleted successfully"
+        404:
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/resources/{id}/feedback:
+    post:
+      summary: Add feedback to a resource
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rating
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+      responses:
+        200:
+          description: Feedback added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        404:
+          description: Resource not found
           content:
             application/json:
               schema:

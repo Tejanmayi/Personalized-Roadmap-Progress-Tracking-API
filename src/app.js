@@ -34,6 +34,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/roadmaps', require('./routes/roadmaps'));
 app.use('/api/progress', require('./routes/progress'));
+app.use('/api/resources', require('./routes/resources'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -41,10 +42,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Connect to MongoDB only if not in test environment
+// (test environment handles its own connection)
+if (process.env.NODE_ENV !== 'test') {
+  const mongoUri = process.env.MONGODB_URI;
+  mongoose.connect(mongoUri)
+    .then(() => console.log(`Connected to MongoDB (${process.env.NODE_ENV} environment)`))
+    .catch(err => console.error('MongoDB connection error:', err));
+}
 
 // Start server only if not in test environment
 let server;

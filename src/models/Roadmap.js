@@ -1,5 +1,47 @@
 const mongoose = require('mongoose');
 
+const attemptSchema = new mongoose.Schema({
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+  timeSpent: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  status: {
+    type: String,
+    enum: ['not_started', 'in_progress', 'completed'],
+    default: 'not_started'
+  },
+  learningAnalytics: {
+    confidenceScore: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    difficultyRating: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    resourcesUsed: [{
+      type: String
+    }],
+    preferredModality: [{
+      type: String,
+      enum: ['video', 'text', 'hands-on', 'audio', 'interactive']
+    }],
+    commonErrors: [{
+      type: String
+    }],
+    conceptsToReview: [{
+      type: String
+    }]
+  }
+});
+
 const moduleSchema = new mongoose.Schema({
   moduleId: {
     type: String,
@@ -16,13 +58,14 @@ const moduleSchema = new mongoose.Schema({
     trim: true
   },
   completionStatus: {
-    type: Boolean,
-    default: false,
-    index: true
+    type: String,
+    enum: ['not_started', 'in_progress', 'completed'],
+    default: 'not_started'
   },
   timeSpent: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0
   },
   userNotes: {
     type: String,
@@ -37,9 +80,35 @@ const moduleSchema = new mongoose.Schema({
     type: Date,
     index: true
   },
-  attempts: {
-    type: Number,
-    default: 0
+  attempts: [attemptSchema],
+  learningAnalytics: {
+    averageConfidenceScore: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    averageDifficultyRating: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    mostUsedResources: [{
+      type: String
+    }],
+    mostCommonErrors: [{
+      type: String
+    }],
+    revisitCount: {
+      type: Number,
+      default: 0
+    },
+    lastRevisitDate: Date,
+    peerComparison: {
+      averageCompletionTime: Number,
+      completionTimePercentile: Number,
+      averageConfidenceScore: Number,
+      confidenceScorePercentile: Number
+    }
   },
   averageTimePerAttempt: {
     type: Number,
@@ -68,6 +137,8 @@ const levelSchema = new mongoose.Schema({
   progress: {
     type: Number,
     default: 0,
+    min: 0,
+    max: 100,
     index: true
   },
   completedAt: {
@@ -81,6 +152,28 @@ const levelSchema = new mongoose.Schema({
   averageModuleTime: {
     type: Number,
     default: 0
+  },
+  learningAnalytics: {
+    averageConfidenceScore: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    averageDifficultyRating: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    mostChallengingModules: [{
+      type: String
+    }],
+    mostConfidentModules: [{
+      type: String
+    }],
+    preferredLearningModalities: [{
+      type: String,
+      enum: ['video', 'text', 'hands-on', 'audio', 'interactive']
+    }]
   }
 });
 
@@ -114,17 +207,52 @@ const roadmapSchema = new mongoose.Schema({
   overallProgress: {
     type: Number,
     default: 0,
+    min: 0,
+    max: 100,
     index: true
   },
   achievements: [{
-    id: String,
-    title: String,
+    type: {
+      type: String,
+      required: true
+    },
+    title: {
+      type: String,
+      required: true
+    },
     description: String,
-    unlockedAt: {
+    earnedAt: {
       type: Date,
-      index: true
+      default: Date.now
     }
   }],
+  learningAnalytics: {
+    overallConfidenceScore: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    overallDifficultyRating: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    preferredLearningModalities: [{
+      type: String,
+      enum: ['video', 'text', 'hands-on', 'audio', 'interactive']
+    }],
+    mostChallengingAreas: [{
+      type: String
+    }],
+    mostConfidentAreas: [{
+      type: String
+    }],
+    peerComparison: {
+      progressPercentile: Number,
+      averageConfidencePercentile: Number,
+      averageDifficultyPercentile: Number
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -150,7 +278,9 @@ const roadmapSchema = new mongoose.Schema({
   },
   completionRate: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0,
+    max: 100
   },
   difficulty: {
     type: String,
@@ -159,8 +289,10 @@ const roadmapSchema = new mongoose.Schema({
   },
   version: {
     type: Number,
-    default: 0
+    default: 1
   }
+}, {
+  timestamps: true
 });
 
 roadmapSchema.index({ user: 1, overallProgress: -1 });
@@ -175,28 +307,9 @@ roadmapSchema.pre('save', function(next) {
 });
 
 roadmapSchema.methods.calculateProgress = function() {
-  let totalModules = 0;
-  let completedModules = 0;
-  let totalTimeSpent = 0;
-
-  this.levels.forEach(level => {
-    const levelModules = level.modules.length;
-    const completedLevelModules = level.modules.filter(m => m.completionStatus).length;
-    const levelTimeSpent = level.modules.reduce((acc, m) => acc + m.timeSpent, 0);
-    
-    totalModules += levelModules;
-    completedModules += completedLevelModules;
-    totalTimeSpent += levelTimeSpent;
-    
-    level.progress = (completedLevelModules / levelModules) * 100;
-    level.totalTimeSpent = levelTimeSpent;
-    level.averageModuleTime = levelTimeSpent / levelModules;
-  });
-
-  this.overallProgress = (completedModules / totalModules) * 100;
-  this.totalTimeSpent = totalTimeSpent;
-  this.averageLevelTime = totalTimeSpent / this.levels.length;
-  this.completionRate = (completedModules / totalModules) * 100;
+  if (this.levels.length === 0) return 0;
+  const totalProgress = this.levels.reduce((sum, level) => sum + level.progress, 0);
+  return totalProgress / this.levels.length;
 };
 
 roadmapSchema.methods.getNextModule = function() {
@@ -247,4 +360,47 @@ roadmapSchema.methods.getAnalytics = function() {
   };
 };
 
-module.exports = mongoose.model('Roadmap', roadmapSchema); 
+roadmapSchema.methods.updateLearningAnalytics = function() {
+  if (this.levels.length === 0) return;
+
+  this.learningAnalytics.overallConfidenceScore = this.levels.reduce((sum, level) => 
+    sum + level.learningAnalytics.averageConfidenceScore, 0) / this.levels.length;
+
+  this.learningAnalytics.overallDifficultyRating = this.levels.reduce((sum, level) => 
+    sum + level.learningAnalytics.averageDifficultyRating, 0) / this.levels.length;
+
+  this.learningAnalytics.preferredLearningModalities = this.levels.reduce((acc, level) => {
+    level.modules.forEach(module => {
+      if (module.learningAnalytics.mostUsedResources.length > 0) {
+        acc.push(...module.learningAnalytics.mostUsedResources);
+      }
+    });
+    return acc;
+  }, []);
+
+  this.learningAnalytics.mostChallengingAreas = this.levels.reduce((acc, level) => {
+    level.modules.forEach(module => {
+      if (module.learningAnalytics.mostChallengingModules.length > 0) {
+        acc.push(...module.learningAnalytics.mostChallengingModules);
+      }
+    });
+    return acc;
+  }, []);
+
+  this.learningAnalytics.mostConfidentAreas = this.levels.reduce((acc, level) => {
+    level.modules.forEach(module => {
+      if (module.learningAnalytics.mostConfidentModules.length > 0) {
+        acc.push(...module.learningAnalytics.mostConfidentModules);
+      }
+    });
+    return acc;
+  }, []);
+
+  this.learningAnalytics.peerComparison.progressPercentile = this.overallProgress;
+  this.learningAnalytics.peerComparison.averageConfidencePercentile = this.learningAnalytics.overallConfidenceScore * 100;
+  this.learningAnalytics.peerComparison.averageDifficultyPercentile = this.learningAnalytics.overallDifficultyRating * 100;
+};
+
+const Roadmap = mongoose.model('Roadmap', roadmapSchema);
+
+module.exports = Roadmap; 

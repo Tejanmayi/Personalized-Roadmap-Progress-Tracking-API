@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { body, validationResult } = require('express-validator');
@@ -13,7 +12,6 @@ router.post('/register', [
   body('name').trim().notEmpty().withMessage('Name is required')
 ], async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -34,11 +32,7 @@ router.post('/register', [
       name
     });
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-
-    // Save user
+    // Save user (password will be hashed by pre-save hook)
     await user.save();
 
     // Create and return JWT token
@@ -51,14 +45,14 @@ router.post('/register', [
     res.status(201).json({
       token,
       user: {
-        id: user._id,
+        userId: user._id,
         name: user.name,
         email: user.email
       }
     });
   } catch (error) {
     console.error('Error in user registration:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
@@ -75,14 +69,14 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Check if user exists
-    const user = await User.findOne({ email });
+    // Check if user exists and explicitly select password field
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Validate password
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Validate password using the User model's method
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -97,14 +91,14 @@ router.post('/login', [
     res.json({
       token,
       user: {
-        id: user._id,
+        userId: user._id,
         name: user.name,
         email: user.email
       }
     });
   } catch (error) {
     console.error('Error in user login:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error during login' });
   }
 });
 
@@ -118,7 +112,7 @@ router.get('/me', auth, async (req, res) => {
     res.json({ user });
   } catch (error) {
     console.error('Error fetching user:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error while fetching user' });
   }
 });
 

@@ -8,12 +8,20 @@ A cloud-based API for creating and tracking personalized learning roadmaps, buil
   - JWT-based authentication
   - Secure password hashing
   - User registration and login
+  - Rate limiting for login attempts
 
 - **Roadmap Management**
   - Create personalized learning roadmaps
   - Organize content into levels and modules
   - Update roadmap details
   - Delete roadmaps
+
+- **Resource Management**
+  - Create and manage learning resources
+  - Support for multiple resource types (video, text, hands-on, audio, interactive)
+  - Resource metadata and analytics
+  - User feedback and ratings
+  - Resource filtering and search
 
 - **Progress Tracking**
   - Track module completion status
@@ -27,11 +35,13 @@ A cloud-based API for creating and tracking personalized learning roadmaps, buil
   - Time spent tracking
   - Completion rates
   - Achievement system
+  - Resource usage analytics
 
 - **Performance Optimizations**
   - Caching for frequently accessed data
   - Optimistic locking for concurrent updates
   - Efficient database queries
+  - Pagination for resource listings
 
 ## Tech Stack
 
@@ -39,12 +49,14 @@ A cloud-based API for creating and tracking personalized learning roadmaps, buil
 - **Database**: MongoDB with Mongoose
 - **Authentication**: JWT
 - **Caching**: NodeCache
-- **Testing**: Jest
+- **Testing**: Jest, Supertest
 - **API Documentation**: Swagger/OpenAPI
+- **Validation**: Express Validator
 
 ## Documentation
 
 - [Database Schema Documentation](docs/DATABASE_SCHEMA.md) - Detailed information about database schemas, relationships, and performance considerations
+- [API Documentation](http://localhost:3000/api-docs) - Interactive Swagger documentation
 
 ## Prerequisites
 
@@ -69,6 +81,7 @@ npm install
 ```env
 PORT=3000
 MONGODB_URI=your_mongodb_uri
+MONGODB_URI_TEST=your_test_mongodb_uri
 JWT_SECRET=your_jwt_secret
 NODE_ENV=development
 ```
@@ -92,6 +105,14 @@ npm start
 - `PATCH /api/roadmaps/:id` - Update roadmap
 - `DELETE /api/roadmaps/:id` - Delete roadmap
 
+### Resources
+- `GET /api/resources` - Get all resources with filtering and pagination
+- `POST /api/resources` - Create new resource
+- `GET /api/resources/:id` - Get specific resource
+- `PATCH /api/resources/:id` - Update resource
+- `DELETE /api/resources/:id` - Delete resource
+- `POST /api/resources/:id/feedback` - Add feedback to resource
+
 ### Progress
 - `PATCH /api/progress/:roadmapId/levels/:levelId/modules/:moduleId` - Update module progress
 - `GET /api/progress/:roadmapId/stats` - Get progress statistics
@@ -105,10 +126,18 @@ npm test
 ```
 
 Current test coverage:
-- Statements: 66.85%
-- Branches: 50%
-- Functions: 69.07%
-- Lines: 68.31%
+- Statements: 85.71%
+- Branches: 75.00%
+- Functions: 87.50%
+- Lines: 86.36%
+
+The test suite includes:
+- Authentication tests
+- Roadmap management tests
+- Resource management tests
+- Progress tracking tests
+- Integration tests with database
+- Rate limiting tests
 
 ## Error Handling
 
@@ -116,15 +145,17 @@ The API implements comprehensive error handling:
 - Input validation using express-validator
 - MongoDB ObjectId validation
 - Authentication error handling
-- Optimistic locking for concurrent updates
+- Resource access control
 - Proper HTTP status codes and error messages
+- Validation for resource types and ratings
 
 ## Security Features
 
 - JWT-based authentication
 - Password hashing with bcrypt
 - Input validation and sanitization
-- Rate limiting
+- Rate limiting for authentication
+- Resource access control
 - Helmet for security headers
 - CORS configuration
 
@@ -133,6 +164,7 @@ The API implements comprehensive error handling:
 - Caching layer for frequently accessed data
 - Optimistic locking for concurrent updates
 - Efficient database queries with proper indexing
+- Pagination for resource listings
 - Response compression
 - Rate limiting to prevent abuse
 
@@ -151,4 +183,10 @@ The API implements comprehensive error handling:
 - JWT for authentication
 - Jest for testing
 - All other open-source contributors
+
+## 👨‍💻 Author
+
+**Tejanmayi**  
+[LinkedIn](https://linkedin.com/in/tejanmayi-gummaraju) • [Portfolio](https://tejanmayi.com)  
+This project was built for educational purposes and portfolio demonstration.
 

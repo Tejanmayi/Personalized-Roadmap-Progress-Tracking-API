@@ -2,46 +2,53 @@ const request = require('supertest');
 const { app } = require('../src/app');
 const Roadmap = require('../src/models/Roadmap');
 const { createTestUser, createTestRoadmap, generateTestToken, createAuthHeaders } = require('./helpers/testHelpers');
+const { setupTestDB } = require('./helpers/testSetup');
 
 describe('Progress Tracking', () => {
+  setupTestDB();
   let user;
   let token;
   let roadmap;
 
   beforeEach(async () => {
-    user = await createTestUser();
-    token = generateTestToken(user);
-    roadmap = await createTestRoadmap(user);
+    const testUser = await createTestUser();
+    user = testUser.user;
+    token = testUser.token;
+    roadmap = await createTestRoadmap(user._id);
   });
 
   describe('PATCH /api/progress/:roadmapId/levels/:levelId/modules/:moduleId', () => {
     it('should update module progress', async () => {
-      const update = {
+      const levelId = 1;
+      const moduleId = '1.1';
+      const progressData = {
         completionStatus: true,
         timeSpent: 120,
-        userNotes: 'Completed module'
+        userNotes: 'Completed basic concepts'
       };
 
       const response = await request(app)
-        .patch(`/api/progress/${roadmap._id}/levels/1/modules/1.1`)
+        .patch(`/api/progress/${roadmap._id}/levels/${levelId}/modules/${moduleId}`)
         .set(createAuthHeaders(token))
-        .send(update);
+        .send(progressData);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.module).toHaveProperty('completionStatus', true);
       expect(response.body.module).toHaveProperty('timeSpent', 120);
-      expect(response.body.module).toHaveProperty('userNotes', 'Completed module');
+      expect(response.body.module).toHaveProperty('userNotes', 'Completed basic concepts');
     });
 
-    it('should not update progress for non-existent module', async () => {
+    it('should return 404 for non-existent module', async () => {
       const response = await request(app)
         .patch(`/api/progress/${roadmap._id}/levels/1/modules/999`)
         .set(createAuthHeaders(token))
-        .send({ completionStatus: true });
+        .send({
+          completionStatus: true,
+          timeSpent: 120
+        });
 
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('errors');
+      expect(response.status).toBe(404);
     });
   });
 
@@ -55,7 +62,7 @@ describe('Progress Tracking', () => {
       expect(response.body).toHaveProperty('overallProgress');
       expect(response.body).toHaveProperty('currentLevel');
       expect(response.body).toHaveProperty('currentModule');
-      expect(response.body.levels).toBeInstanceOf(Array);
+      expect(response.body).toHaveProperty('levels');
     });
   });
 

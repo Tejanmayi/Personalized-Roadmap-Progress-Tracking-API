@@ -1,22 +1,37 @@
 const User = require('../../src/models/User');
 const Roadmap = require('../../src/models/Roadmap');
+const Resource = require('../../src/models/Resource');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 // Create a test user
 const createTestUser = async (userData = {}) => {
+  const timestamp = Date.now();
   const defaultUser = {
-    email: 'test@example.com',
+    email: `test${timestamp}@example.com`,
     password: 'password123',
-    name: 'Test User'
+    name: `Test User ${timestamp}`
   };
 
-  const user = new User({ ...defaultUser, ...userData });
+  // Create user with plain password (will be hashed by pre-save hook)
+  const user = new User({ 
+    ...defaultUser, 
+    ...userData
+  });
   await user.save();
-  return user;
+
+  // Generate token
+  const token = jwt.sign(
+    { userId: user._id.toString() },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  return { user, token };
 };
 
 // Create a test roadmap
-const createTestRoadmap = async (user, roadmapData = {}) => {
+const createTestRoadmap = async (userId, roadmapData = {}) => {
   const defaultRoadmap = {
     title: 'Test Roadmap',
     description: 'Test Description',
@@ -36,21 +51,53 @@ const createTestRoadmap = async (user, roadmapData = {}) => {
     ]
   };
 
-  const roadmap = new Roadmap({
+  const roadmap = await Roadmap.create({
     ...defaultRoadmap,
     ...roadmapData,
-    user: user._id
+    user: userId
   });
-  await roadmap.save();
   return roadmap;
+};
+
+// Create a test resource
+const createTestResource = async (userId) => {
+  const timestamp = Date.now();
+  const resource = await Resource.create({
+    title: `Test Resource ${timestamp}`,
+    description: `Test Description ${timestamp}`,
+    type: 'video',
+    url: `https://example.com/video/${timestamp}`,
+    difficulty: 3,
+    duration: 30,
+    tags: ['test', 'video'],
+    metadata: {
+      author: userId
+    },
+    usage: {
+      totalViews: 0,
+      averageRating: 1,
+      completionRate: 0,
+      averageTimeSpent: 0
+    },
+    analytics: {
+      userFeedback: [],
+      effectiveness: 0,
+      difficultyRating: 1,
+      mostCommonUseCases: [],
+      relatedResources: []
+    },
+    status: 'active'
+  });
+  return resource;
 };
 
 // Generate a test token
 const generateTestToken = (user) => {
-  if (process.env.NODE_ENV === 'test') {
-    return jwt.sign({ userId: 'test-user-id' }, process.env.JWT_SECRET);
-  }
-  return jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+  return jwt.sign(
+    { userId: user._id.toString() },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 };
 
 // Create test request headers
@@ -60,36 +107,10 @@ const createAuthHeaders = (token) => {
   };
 };
 
-// Simulate load test
-const simulateLoad = async (fn, iterations = 100) => {
-  const startTime = Date.now();
-  const results = [];
-
-  for (let i = 0; i < iterations; i++) {
-    const iterationStart = Date.now();
-    await fn();
-    const iterationTime = Date.now() - iterationStart;
-    results.push(iterationTime);
-  }
-
-  const totalTime = Date.now() - startTime;
-  const averageTime = results.reduce((a, b) => a + b, 0) / results.length;
-  const maxTime = Math.max(...results);
-  const minTime = Math.min(...results);
-
-  return {
-    totalTime,
-    averageTime,
-    maxTime,
-    minTime,
-    iterations
-  };
-};
-
 module.exports = {
   createTestUser,
   createTestRoadmap,
+  createTestResource,
   generateTestToken,
-  createAuthHeaders,
-  simulateLoad
+  createAuthHeaders
 }; 

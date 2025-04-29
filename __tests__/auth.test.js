@@ -2,20 +2,10 @@ const request = require('supertest');
 const { app } = require('../src/app');
 const User = require('../src/models/User');
 const { createTestUser, generateTestToken, createAuthHeaders } = require('./helpers/testHelpers');
-const { setupTestEnv, teardownTestEnv, clearDatabase } = require('./helpers/setupTestEnv');
+const { setupTestDB } = require('./helpers/testSetup');
 
 describe('Authentication', () => {
-  beforeAll(async () => {
-    await setupTestEnv();
-  });
-
-  afterAll(async () => {
-    await teardownTestEnv();
-  });
-
-  beforeEach(async () => {
-    await clearDatabase();
-  });
+  setupTestDB();
 
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
@@ -33,11 +23,12 @@ describe('Authentication', () => {
       expect(response.body).toHaveProperty('token');
       expect(response.body.user).toHaveProperty('email', userData.email);
       expect(response.body.user).toHaveProperty('name', userData.name);
+      expect(response.body.user).toHaveProperty('userId');
       expect(response.body.user).not.toHaveProperty('password');
     });
 
     it('should not register a user with existing email', async () => {
-      const user = await createTestUser();
+      const { user } = await createTestUser();
 
       const response = await request(app)
         .post('/api/auth/register')
@@ -63,7 +54,7 @@ describe('Authentication', () => {
 
   describe('POST /api/auth/login', () => {
     it('should login user successfully', async () => {
-      const user = await createTestUser();
+      const { user } = await createTestUser();
 
       const response = await request(app)
         .post('/api/auth/login')
@@ -92,8 +83,7 @@ describe('Authentication', () => {
 
   describe('GET /api/auth/me', () => {
     it('should get current user with valid token', async () => {
-      const user = await createTestUser();
-      const token = generateTestToken(user);
+      const { user, token } = await createTestUser();
 
       const response = await request(app)
         .get('/api/auth/me')
